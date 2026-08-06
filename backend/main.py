@@ -1,5 +1,5 @@
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -78,13 +78,32 @@ class DriveImportRequest(BaseModel):
     url: str
 
 
-@app.post("/api/drive/import")
-def drive_import(body: DriveImportRequest):
+def _run_drive_import(audio_id: str, url: str):
     try:
-        audio_id, path = media.import_from_drive(body.url)
+        _, path = media.import_from_drive(url, audio_id=audio_id)
     except media.MediaError as e:
-        raise HTTPException(400, str(e))
-    job = jobs.create(audio_id, filename=path.name, source="drive", status="uploaded", path=str(path))
+        jobs.update(audio_id, status="import_failed", error=str(e))
+        return
+    jobs.update(audio_id, status="uploaded", filename=path.name, path=str(path))
+
+
+@app.post("/api/drive/import")
+def drive_import(body: DriveImportRequest, background_tasks: BackgroundTasks):
+    audio_id = media.new_id()
+    jobs.create(audio_id, source="drive", status="importing")
+    background_tasks.add_task(_run_drive_import, audio_id, body.url)
+    return {"audio_id": audio_id, "status": "importing"}
+
+
+@app.get("/api/drive/import/status/{audio_id}")
+def drive_import_status(audio_id: str):
+    job = jobs.get(audio_id)
+    if not job:
+        raise HTTPException(404, "غير موجود")
+    if job.get("status") == "import_failed":
+        raise HTTPException(400, job.get("error") or "فشل الاستيراد")
+    if job.get("status") == "importing":
+        return {"audio_id": audio_id, "status": "importing"}
     return _job_response(audio_id, job)
 
 
@@ -92,44 +111,100 @@ class AudioIdRequest(BaseModel):
     audio_id: str
 
 
+# ---------------------------------------------------------------------------
+# Transcription and summarization run as background jobs instead of blocking
+# the request. Reason: Cloudflare's edge (including the free trycloudflare.com
+# Quick Tunnels used for the split-hosting mode) drops any HTTP request that
+# the origin hasn't fully answered within ~100-120 seconds, and returns its own
+# HTML error page instead — which the frontend can't parse as JSON. A long
+# recording easily takes longer than that to transcribe (or, on a big prompt,
+# to summarize), so those endpoints must return immediately and let the client
+# poll for the result instead of waiting on a single long-lived response.
+# ---------------------------------------------------------------------------
+
+def _run_transcription(audio_id: str, audio_path: str):
+    try:
+        text = stt.transcribe(Path(audio_path))
+    except stt.TranscribeError as e:
+        jobs.update(audio_id, status="transcribe_failed", error=str(e))
+        return
+    except Exception as e:
+        jobs.update(audio_id, status="transcribe_failed", error=f"فشل التفريغ الصوتي: {e}")
+        return
+    txt_path = config.TRANSCRIPT_DIR / f"{audio_id}.txt"
+    txt_path.write_text(text, encoding="utf-8")
+    jobs.update(audio_id, status="transcribed", transcript_path=str(txt_path), word_count=len(text.split()))
+
+
 @app.post("/api/transcribe")
-def transcribe(body: AudioIdRequest):
+def transcribe(body: AudioIdRequest, background_tasks: BackgroundTasks):
     job = jobs.get(body.audio_id)
     if not job:
         raise HTTPException(404, "الملف الصوتي غير موجود")
 
-    try:
-        text = stt.transcribe(Path(job["path"]))
-    except stt.TranscribeError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"فشل التفريغ الصوتي: {e}")
+    jobs.update(body.audio_id, status="transcribing", error=None)
+    background_tasks.add_task(_run_transcription, body.audio_id, job["path"])
+    return {"audio_id": body.audio_id, "status": "transcribing"}
 
-    txt_path = config.TRANSCRIPT_DIR / f"{body.audio_id}.txt"
-    txt_path.write_text(text, encoding="utf-8")
-    job = jobs.update(body.audio_id, status="transcribed", transcript_path=str(txt_path),
-                       word_count=len(text.split()))
-    return {"audio_id": body.audio_id, "transcript": text, "word_count": job["word_count"]}
+
+@app.get("/api/transcribe/status/{audio_id}")
+def transcribe_status(audio_id: str):
+    job = jobs.get(audio_id)
+    if not job:
+        raise HTTPException(404, "الملف الصوتي غير موجود")
+    if job.get("status") == "transcribe_failed":
+        raise HTTPException(400, job.get("error") or "فشل التفريغ الصوتي")
+    if job.get("status") != "transcribed":
+        return {"audio_id": audio_id, "status": job.get("status", "transcribing")}
+    return {
+        "audio_id": audio_id,
+        "status": "transcribed",
+        "transcript": Path(job["transcript_path"]).read_text(encoding="utf-8"),
+        "word_count": job["word_count"],
+    }
+
+
+def _run_summarize(audio_id: str, transcript_path: str):
+    transcript = Path(transcript_path).read_text(encoding="utf-8")
+    try:
+        report = summarizer.summarize(transcript)
+    except summarizer.SummarizeError as e:
+        jobs.update(audio_id, status="summarize_failed", error=str(e))
+        return
+    except Exception as e:
+        jobs.update(audio_id, status="summarize_failed", error=f"فشل إنشاء التقرير: {e}")
+        return
+    report_path = config.REPORT_DIR / f"{audio_id}.txt"
+    report_path.write_text(report, encoding="utf-8")
+    jobs.update(audio_id, status="summarized", report_path=str(report_path))
 
 
 @app.post("/api/summarize")
-def summarize(body: AudioIdRequest):
+def summarize(body: AudioIdRequest, background_tasks: BackgroundTasks):
     job = jobs.get(body.audio_id)
     if not job or "transcript_path" not in job:
         raise HTTPException(404, "لا يوجد نص مفرَّغ لهذا الملف بعد")
 
-    transcript = Path(job["transcript_path"]).read_text(encoding="utf-8")
-    try:
-        report = summarizer.summarize(transcript)
-    except summarizer.SummarizeError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"فشل إنشاء التقرير: {e}")
+    jobs.update(body.audio_id, status="summarizing", error=None)
+    background_tasks.add_task(_run_summarize, body.audio_id, job["transcript_path"])
+    return {"audio_id": body.audio_id, "status": "summarizing"}
 
-    report_path = config.REPORT_DIR / f"{body.audio_id}.txt"
-    report_path.write_text(report, encoding="utf-8")
-    jobs.update(body.audio_id, status="summarized", report_path=str(report_path))
-    return {"audio_id": body.audio_id, "report": report, "usage": token_tracker.status()}
+
+@app.get("/api/summarize/status/{audio_id}")
+def summarize_status(audio_id: str):
+    job = jobs.get(audio_id)
+    if not job:
+        raise HTTPException(404, "غير موجود")
+    if job.get("status") == "summarize_failed":
+        raise HTTPException(400, job.get("error") or "فشل إنشاء التقرير")
+    if job.get("status") != "summarized":
+        return {"audio_id": audio_id, "status": job.get("status", "summarizing")}
+    return {
+        "audio_id": audio_id,
+        "status": "summarized",
+        "report": Path(job["report_path"]).read_text(encoding="utf-8"),
+        "usage": token_tracker.status(),
+    }
 
 
 @app.get("/api/download/transcript/{audio_id}")
