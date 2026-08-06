@@ -1,0 +1,50 @@
+name: Deploy frontend to GitHub Pages
+
+# Runs automatically on every push to main that touches frontend/ (or this
+# workflow file itself), and can also be triggered manually from the Actions
+# tab. Only the frontend/ folder is published — backend/ and kaggle/ never
+# reach Pages, matching the split-hosting design (README "الوضع الثاني").
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+# Minimum permissions required by the official Pages deploy actions below.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; a newer push cancels an in-flight one
+# instead of queueing behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      # frontend/ is already plain static HTML/CSS/JS with no build step, so
+      # it's uploaded as-is (this now also includes config.js — the single
+      # API_BASE_URL default added for the Cloudflare Tunnel setup).
+      - name: Upload frontend/ as the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
