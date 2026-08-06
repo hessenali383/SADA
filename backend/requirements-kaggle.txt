@@ -1,0 +1,9 @@
+# Install these ON TOP OF backend/requirements.txt only inside the Kaggle notebook,
+# when running with STT_PROVIDER=local. Not needed for the default OpenAI-Whisper path.
+torch
+transformers>=5.4.0
+accelerate
+soundfile
+huggingface_hub
+# NOTE: pyngrok removed — the public tunnel is now Cloudflare Tunnel (cloudflared),
+# which is a standalone binary downloaded directly in the notebook, not a pip package.
