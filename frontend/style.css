@@ -104,6 +104,7 @@ body{
   display:flex;align-items:center;justify-content:center;
   padding:20px;z-index:50;
 }
+.modal-overlay[hidden]{display:none}
 .modal-box{
   background:var(--card);border-radius:var(--radius-lg);
   box-shadow:var(--shadow);padding:26px;max-width:440px;width:100%;
