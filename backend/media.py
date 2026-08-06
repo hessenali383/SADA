@@ -42,9 +42,9 @@ def extract_audio_from_video(video_bytes: bytes, ext: str) -> tuple[str, Path]:
     return audio_id, audio_path
 
 
-def import_from_drive(url: str) -> tuple[str, Path]:
+def import_from_drive(url: str, audio_id: str | None = None) -> tuple[str, Path]:
     """Download a single audio file shared via a Google Drive link."""
-    audio_id = new_id()
+    audio_id = audio_id or new_id()
     try:
         # trailing slash -> gdown infers the real filename/extension from Drive metadata
         downloaded = gdown.download(url=url, output=str(config.AUDIO_DIR) + "/", fuzzy=True, quiet=True)
