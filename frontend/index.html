@@ -185,6 +185,30 @@
 
 </div>
 
+  <!-- ===== Log panel (collapsible debug console) ===== -->
+  <div class="log-panel" id="logPanel">
+    <button class="log-bar" id="logBar" aria-expanded="false">
+      <span class="log-bar-title">
+        <span class="log-bar-dot" id="logBarDot"></span>
+        سجل الأحداث
+      </span>
+      <span class="log-bar-right">
+        <span class="log-bar-count" id="logBarCount">0</span>
+        <span class="log-bar-arrow" id="logBarArrow">▲</span>
+      </span>
+    </button>
+    <div class="log-body" id="logBody" hidden>
+      <div class="log-toolbar">
+        <span class="log-toolbar-hint">آخر الطلبات والأخطاء (يبقى هذا السجل على جهازك فقط)</span>
+        <div class="log-toolbar-actions">
+          <button class="pill" id="logCopyBtn">نسخ</button>
+          <button class="pill" id="logClearBtn">مسح</button>
+        </div>
+      </div>
+      <div class="log-console" id="logConsole"><p class="log-empty">لا توجد أحداث بعد.</p></div>
+    </div>
+  </div>
+
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>
