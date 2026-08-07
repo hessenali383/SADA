@@ -22,7 +22,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 STT_PROVIDER = os.getenv("STT_PROVIDER", "openai")
 STT_MODEL = os.getenv("STT_MODEL", "whisper-1")
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4o-mini")
 
 MONTHLY_TOKEN_BUDGET = int(os.getenv("MONTHLY_TOKEN_BUDGET", "1000000"))
