@@ -40,4 +40,8 @@ def summarize(transcript: str) -> str:
     if not response.text:
         raise SummarizeError("Gemini لم يُرجع تقريرًا.")
 
+    if response.usage_metadata and response.usage_metadata.total_token_count:
+        token_tracker.add_tokens(response.usage_metadata.total_token_count)
+
     return response.text.strip()
+    
