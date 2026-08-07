@@ -1,6 +1,4 @@
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_community.callbacks.manager import get_openai_callback
+from google import genai
 from . import config, token_tracker
 
 SYSTEM_PROMPT = """أنت مساعد متخصص في تحويل نصوص مفرَّغة من تسجيلات صوتية (اجتماعات، محاضرات، مكالمات عمل) \
