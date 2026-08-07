@@ -16,25 +16,30 @@ SYSTEM_PROMPT = """أنت مساعد متخصص في تحويل نصوص مفر�
 
 HUMAN_PROMPT = "النص المفرَّغ من التسجيل الصوتي:\n\n{transcript}"
 
-_prompt = ChatPromptTemplate.from_messages([
-    ("system", SYSTEM_PROMPT),
-    ("human", HUMAN_PROMPT),
-])
-
 
 class SummarizeError(Exception):
     pass
 
 
 def summarize(transcript: str) -> str:
-    if not config.OPENAI_API_KEY:
-        raise SummarizeError("OPENAI_API_KEY غير موجود — أضِفه في Codespaces Secrets أو ملف .env")
+    if not config.GEMINI_API_KEY:
+        raise SummarizeError(
+            "GEMINI_API_KEY غير موجود — أضِفه في Kaggle Secrets أو ملف .env"
+        )
 
-    llm = ChatOpenAI(model=config.CHAT_MODEL, api_key=config.OPENAI_API_KEY, temperature=0.2)
-    chain = _prompt | llm
+    client = genai.Client(api_key=config.GEMINI_API_KEY)
 
-    with get_openai_callback() as cb:
-        result = chain.invoke({"transcript": transcript})
-        token_tracker.add_tokens(cb.total_tokens)
+    prompt = f"""{SYSTEM_PROMPT}
 
-    return result.content.strip()
+{HUMAN_PROMPT.format(transcript=transcript)}
+"""
+
+    response = client.models.generate_content(
+        model=config.GEMINI_MODEL,
+        contents=prompt,
+    )
+
+    if not response.text:
+        raise SummarizeError("Gemini لم يُرجع تقريرًا.")
+
+    return response.text.strip()
