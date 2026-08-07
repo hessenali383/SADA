@@ -56,7 +56,9 @@ body{
 }
 .brand-text h1{margin:0;font-size:22px;font-weight:800}
 .brand-text p{margin:0;font-size:13px;color:var(--text-soft)}
-
+a.brand{text-decoration:none;color:inherit;cursor:pointer;transition:opacity .15s}
+a.brand:hover{opacity:.85}
+.brand-mark.brand-mark-linkedin{background:#0A66C2}
 .token-card{
   background:var(--card);
   border-radius:var(--radius-lg);
@@ -283,11 +285,7 @@ body{
 }
 
 /* ===== Log panel (debug console) ===== */
-.log-panel{
-  position:fixed;left:0;right:0;bottom:0;z-index:40;
-  max-width:760px;margin:0 auto;
-  font-family:"Cairo",system-ui,sans-serif;
-}
+
 .log-bar{
   width:100%;display:flex;align-items:center;justify-content:space-between;
   gap:10px;border:none;cursor:pointer;font-family:inherit;
@@ -314,6 +312,9 @@ body{
   background:#10142E;color:#D7DDF5;
   max-height:42vh;display:flex;flex-direction:column;
   box-shadow:0 -6px 20px rgba(26,33,72,.18);
+}
+.log-body[hidden]{
+  display:none !important;
 }
 .log-toolbar{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -353,4 +354,47 @@ body{
 
 @media (max-width:520px){
   .log-panel{max-width:100%}
+}
+/* ===== Page layout fix ===== */
+html,
+body{
+  min-height:100%;
+}
+
+body{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+.page{
+  flex:1;
+}
+
+/* ===== Log panel ===== */
+.log-panel{
+  position:relative;
+  left:auto;
+  right:auto;
+  bottom:auto;
+  width:100%;
+  max-width:760px;
+  margin:0 auto;
+  z-index:40;
+  font-family:"Cairo",system-ui,sans-serif;
+  flex-direction:column-reverse;
+}
+/* Terminal log - final layout */
+
+
+.log-panel{
+  position:relative;
+  width:100%;
+  max-width:760px;
+  margin:20px auto 0;
+  z-index:40;
+}
+
+.log-body[hidden]{
+  display:none !important;
 }
