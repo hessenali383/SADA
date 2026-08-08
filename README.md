@@ -116,8 +116,7 @@ FastAPI · Python · نموذج Cohere للتفريغ الصوتي العربي 
 
 <div dir="rtl" align="right">
 
-## 👤 صُنع بواسطة
 
-**Eng. Hussein Ali**
+**By Eng. Hussein Ali**
 
 </div>
