@@ -106,7 +106,7 @@ https://xxxx-xxxx-xxxx.trycloudflare.com
 
 <div dir="rtl" align="right">
 
-## 🛠️ التقنيات المستخدمة
+## 🛠️ Tools 
 
 FastAPI · Python · نموذج Cohere للتفريغ الصوتي العربي · Google Gemini للتلخيص الذكي · Cloudflare Tunnel للنشر · واجهة ويب عربية (HTML/CSS/JS) بدعم RTL كامل.
 
