@@ -28,12 +28,14 @@ CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4o-mini")
 MONTHLY_TOKEN_BUDGET = int(os.getenv("MONTHLY_TOKEN_BUDGET", "1000000"))
 TRANSCRIBE_LANGUAGE = os.getenv("TRANSCRIBE_LANGUAGE", "ar")
 
-# Only used when STT_PROVIDER=local (runs the notebook's Cohere Arabic model on a GPU host)
+# Only used when STT_PROVIDER=local (Whisper on a GPU host, e.g. Kaggle)
 HF_TOKEN = os.getenv("HF_TOKEN", "")
-LOCAL_ASR_MODEL = os.getenv("LOCAL_ASR_MODEL", "CohereLabs/cohere-transcribe-arabic-07-2026")
-LOCAL_ASR_SEGMENT_SECONDS = int(os.getenv("LOCAL_ASR_SEGMENT_SECONDS", "60"))
-LOCAL_ASR_BATCH_SIZE = int(os.getenv("LOCAL_ASR_BATCH_SIZE", "8"))
-LOCAL_ASR_MAX_NEW_TOKENS = int(os.getenv("LOCAL_ASR_MAX_NEW_TOKENS", "440"))
+LOCAL_ASR_MODEL = os.getenv("LOCAL_ASR_MODEL", "openai/whisper-large-v3-turbo")
+# "auto" lets Whisper detect the language (needed for English); or force e.g. "ar" / "en"
+LOCAL_ASR_LANGUAGE = os.getenv("LOCAL_ASR_LANGUAGE", "auto")
+# "light" (highpass+loudnorm), "full" (adds denoise/lowpass), "none"
+LOCAL_ASR_ENHANCE = os.getenv("LOCAL_ASR_ENHANCE", "light")
+LOCAL_ASR_NUM_BEAMS = int(os.getenv("LOCAL_ASR_NUM_BEAMS", "1"))
 
 # Comma-separated list of allowed frontend origins for CORS (e.g. your GitHub Pages URL).
 # "*" (default) is fine for the all-in-one Codespace deployment where frontend + backend
